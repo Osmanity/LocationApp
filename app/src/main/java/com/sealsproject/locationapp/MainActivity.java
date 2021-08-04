@@ -12,6 +12,7 @@ import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
 import android.util.Log;
+import android.widget.TextView;
 
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -30,6 +31,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
     int LOCATION_REQUEST_CODE = 10001;
+    TextView txtLong;
+    TextView txtLat;
 
     //Step 1 - FusedLocation declaration
     FusedLocationProviderClient fusedLocationProviderClient;
@@ -47,6 +50,8 @@ public class MainActivity extends AppCompatActivity {
             for(Location location: locationResult.getLocations()) {
                 //Log.d(TAG,"onLocationResult: " + location.toString());
                 Log.d(TAG,"\nMapping: \n" +"LocationLongitude: " + location.getLongitude() + "\nLocationLatitude: " + location.getLatitude());
+                txtLat.setText(Double.toString(location.getLatitude()));
+                txtLong.setText(Double.toString(location.getLongitude()));
             }
         }
     };
@@ -63,6 +68,9 @@ public class MainActivity extends AppCompatActivity {
         LR.setInterval(4000);
         LR.setFastestInterval(2000);
         LR.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+        txtLong = findViewById(R.id.txtLongitude);
+        txtLat = findViewById(R.id.txtLatitude);
 
     }
 
