@@ -1,12 +1,20 @@
 package com.sealsproject.locationapp;
 
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
+import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -15,6 +23,8 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.sealsproject.locationapp.databinding.ActivityMapsBinding;
 
 import java.io.IOException;
@@ -26,6 +36,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private ActivityMapsBinding binding;
     Geocoder geocoder;
+    private int ACCESS_LOCATION_REQUEST_CODE = 10001;
+    FusedLocationProviderClient fusedLocationProviderClient;
 
 
     @Override
@@ -40,6 +52,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         geocoder = new Geocoder(this);
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
     }
 
     /**
@@ -58,6 +71,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMapLongClickListener(this);
 
         mMap.setOnMarkerDragListener(this);
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            enableUserLocation();
+            zoomToUserLocation();
+        } else {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                //We can show user a dialog  why this permission is necessary
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, ACCESS_LOCATION_REQUEST_CODE);
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, ACCESS_LOCATION_REQUEST_CODE);
+            }
+
+        }
+
+
         //-------------------------------------------------------------------------------------------------------------------------
         //mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
 
@@ -80,7 +108,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         try {
             List<Address> addresses = geocoder.getFromLocationName("Stockholm", 1);
-            if(addresses.size() > 0) {
+            if (addresses.size() > 0) {
                 Address address = addresses.get(0);
                 //Log.d(TAG, "onMapReady: "+ address.toString());
                 LatLng london = new LatLng(address.getLatitude(), address.getLongitude());
@@ -91,7 +119,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 mMap.addMarker(markerOptions);
 
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(london, 18));
-            } else{
+            } else {
                 //Log.d(TAG, "Notice: \n\n\n\n\nLocation does not Exists in the address, Code" + addresses.size() +" Negative\n\n\n\n\n\n");
             }
         } catch (IOException e) {
@@ -99,6 +127,43 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
 
+    }
+
+
+    private void enableUserLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        mMap.setMyLocationEnabled(true);
+    }
+
+    private void zoomToUserLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        Task<Location> locationTask = fusedLocationProviderClient.getLastLocation();
+        locationTask.addOnSuccessListener(new OnSuccessListener<Location>() {
+            @Override
+            public void onSuccess(Location location) {
+                LatLng latlng = new LatLng(location.getLatitude(), location.getLongitude());
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 18));
+                mMap.addMarker(new MarkerOptions().position(latlng));
+            }
+        });
     }
 
 
@@ -150,6 +215,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if(requestCode == ACCESS_LOCATION_REQUEST_CODE){
+            if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                enableUserLocation();
+                zoomToUserLocation();
+            }else {
+                //we can show a dialog that permission is not granted
+            }
+
         }
     }
 }
