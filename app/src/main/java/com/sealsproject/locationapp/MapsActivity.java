@@ -2,7 +2,10 @@ package com.sealsproject.locationapp;
 
 import androidx.fragment.app.FragmentActivity;
 
+import android.location.Address;
+import android.location.Geocoder;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -10,13 +13,20 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.sealsproject.locationapp.databinding.ActivityMapsBinding;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+import java.io.IOException;
+import java.util.List;
 
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapLongClickListener, GoogleMap.OnMarkerDragListener {
+
+    private static final String TAG = "MainActivity";
     private GoogleMap mMap;
     private ActivityMapsBinding binding;
+    Geocoder geocoder;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +39,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        geocoder = new Geocoder(this);
     }
 
     /**
@@ -44,6 +55,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
+        mMap.setOnMapLongClickListener(this);
+
+        mMap.setOnMarkerDragListener(this);
+        //-------------------------------------------------------------------------------------------------------------------------
         //mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
 
         // Add a marker in Sydney and move the camera
@@ -51,14 +66,90 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
 
-        LatLng latLng = new LatLng(59.2887,17.9075);
-        MarkerOptions markerOptions = new MarkerOptions()
-                                            .position(latLng)
-                                            .title("Stockholm")
-                                            .snippet("Seals");
+//        LatLng latLng = new LatLng(59.2887,17.9075);
+//        MarkerOptions markerOptions = new MarkerOptions()
+//                                            .position(latLng)
+//                                            .title("Stockholm")
+//                                            .snippet("Seals");
+//
+//        mMap.addMarker(markerOptions);
+//        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 18);
+//        mMap.animateCamera(cameraUpdate);
 
-        mMap.addMarker(markerOptions);
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 18);
-        mMap.animateCamera(cameraUpdate);
+        //-------------------------------------------------------------------------------------------------------------------------
+
+        try {
+            List<Address> addresses = geocoder.getFromLocationName("Stockholm", 1);
+            if(addresses.size() > 0) {
+                Address address = addresses.get(0);
+                //Log.d(TAG, "onMapReady: "+ address.toString());
+                LatLng london = new LatLng(address.getLatitude(), address.getLongitude());
+                MarkerOptions markerOptions = new MarkerOptions()
+                        .position(london)
+                        .title(address.getLocality())
+                        .snippet("Seals");
+                mMap.addMarker(markerOptions);
+
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(london, 18));
+            } else{
+                //Log.d(TAG, "Notice: \n\n\n\n\nLocation does not Exists in the address, Code" + addresses.size() +" Negative\n\n\n\n\n\n");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+
+
+    @Override
+    public void onMapLongClick(LatLng latLng) {
+        Log.d(TAG, "{\n\n\nLong pressed" + latLng.toString());
+        try {
+            List<Address> addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1);
+            if(addresses.size()>0){
+                Address address = addresses.get(0);
+                String streetAddress = address.getAddressLine(0);
+                mMap.addMarker(new MarkerOptions().position(latLng).position(latLng).title(streetAddress)).setDraggable(true);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //mMap.addMarker(new MarkerOptions().position(latLng));
+
+    }
+
+
+
+    @Override
+    public void onMarkerDragStart(Marker marker) {
+        Log.d(TAG, "onMarkerDragStart \n");
+    }
+
+
+
+    @Override
+    public void onMarkerDrag(Marker marker) {
+        Log.d(TAG, "onMarkerDrag \n");
+    }
+
+
+
+    @Override
+    public void onMarkerDragEnd(Marker marker) {
+        Log.d(TAG, "onMarkerDragEnd \n");
+        LatLng latLng = marker.getPosition();
+        try {
+            List<Address> addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1);
+            if(addresses.size()>0){
+                Address address = addresses.get(0);
+                String streetAddress = address.getAddressLine(0);
+                marker.setTitle(streetAddress);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
